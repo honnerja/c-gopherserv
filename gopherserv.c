@@ -20,6 +20,8 @@
 #include <signal.h>
 #include <time.h>
 
+#include "string.h"
+
 #define MAX_REQUEST 2048
 #define DEFAULT_PAGE_PATH "/test"
 #define ERROR_PAGE_PATH "/error.test"
@@ -65,46 +67,7 @@ void handleSigTerm(int sig) {
 	KEEP_RUNNING = 0;
 }
 
-typedef struct string {
-	size_t size;
-	size_t len;
-	char content[];
-} string;
 
-string* strAlloc(size_t len) {
-	string* s = malloc(sizeof(string) + len);
-	if (len > 1000) puts("big str alloc");
-	s->size = len;
-	s->len = 0;
-	return s;
-}
-
-void strFree(string* str) {
-	free(str);
-}
-
-/* returns the amount of chars that could be appended */
-size_t strAppend(string* str, char* content, size_t len) {
-	if (len + str->len > str->size) {
-		len = str->size - str->len;
-	}
-	memcpy(str->content + str->len, content, len);
-	str->len += len;
-	return len;
-}
-
-/* truncates string
- * returns 0 on success, -1 on fail
- */
-int strTruncate(string* str, size_t len) {
-	if (len > str->size) {
-		return -1;
-	}
-	if (len < str->len) {
-		str->len = len;
-	}
-	return 0;
-}
 
 enum connStates {
 	ERROR,
@@ -206,51 +169,6 @@ void gopherConnDestroy (int epollfd, gopherConn* conn) {
 	//free(conn);
 }
 
-typedef struct resourceStack {
-	int top;
-	size_t size;
-	gopherConn* resources[];
-} resourceStack;
-
-resourceStack* rstackAlloc(int numItems) {
-	resourceStack* s = malloc(numItems * sizeof(gopherConn*) + sizeof(resourceStack));
-	s->top = 0;
-	s->size = numItems;
-	return s;
-}
-
-gopherConn* rstackPop(resourceStack* s) {
-	if (s->top > 0) {
-		return s->resources[--s->top];
-	}
-	gopherConn* conn = malloc(sizeof(gopherConn));
-	if (conn == NULL) return NULL;
-	conn->str = strAlloc(CONN_FILE_BUF_SIZE);
-	if (conn->str == NULL) {
-		free(conn);
-		return NULL;
-	}
-	puts("allocd conn!");
-	return conn;
-}
-
-/* saves allocd mem if space available, if not frees conn*/
-void rstackPush(resourceStack* s, gopherConn* conn) {
-	if (s->top < s->size) {
-		s->resources[s->top++] = conn;
-	} else {
-		strFree(conn->str);
-		free(conn);
-	}
-}
-
-void rstackFree(resourceStack* s) {
-	for (int i = 0; i < s->top; i++) {
-		strFree(s->resources[i]->str);
-		free(s->resources[i]);
-	}
-	free(s);
-}
 
 void llReset(linkedList* l) {
 	l->head = NULL;
