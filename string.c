@@ -1,8 +1,8 @@
-#include <string.h>
+#include "string.h"
 #include <stdlib.h>
+#include <string.h>
 string* strAlloc(size_t len) {
-	string* s = malloc(sizeof(string) + len);
-	if (len > 1000) puts("big str alloc");
+	string* s = malloc(sizeof(string) + len); 
 	s->size = len;
 	s->len = 0;
 	return s;

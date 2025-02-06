@@ -1,4 +1,5 @@
 #pragma once
+#define CONN_FILE_BUF_SIZE 65536
 typedef struct gopherConn gopherConn;
 
 typedef struct resourceStack {
@@ -6,6 +7,8 @@ typedef struct resourceStack {
 	size_t size;
 	gopherConn* resources[];
 } resourceStack;
+
+resourceStack* rstackAlloc(int numItems);
 
 gopherConn* rstackPop(resourceStack* s); 
 

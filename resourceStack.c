@@ -1,5 +1,6 @@
 #include "string.h"
 #include "resourceStack.h"
+#include "gopherConn.h"
 #include <stdlib.h>
 resourceStack* rstackAlloc(int numItems) {
 	resourceStack* s = malloc(numItems * sizeof(gopherConn*) + sizeof(resourceStack));

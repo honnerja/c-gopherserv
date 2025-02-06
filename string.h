@@ -1,4 +1,5 @@
 #pragma once
+#include <stddef.h>
 typedef struct string {
 	size_t size;
 	size_t len;
