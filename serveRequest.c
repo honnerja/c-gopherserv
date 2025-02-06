@@ -114,7 +114,7 @@ void header2str(int fd, string* str, char* type, string* title) {
 	file2String(fd, str);
 }
 
-void genEntry(struct dirent* dirEntry, string* path, string* entryBuf, char* port, char* hostname) {
+void genEntry(struct dirent* dirEntry, char* request, string* path, string* entryBuf, char* port, char* hostname) {
 	
 	// adding head
 	char type = '\0';
@@ -155,7 +155,7 @@ void genEntry(struct dirent* dirEntry, string* path, string* entryBuf, char* por
 	strAppend(entryBuf, "\t", 1);
 	/* create full path */ 
 
-	strAppend(entryBuf, path->content + 1, path->len - 1);
+	strAppend(entryBuf, request, strlen(request));
 	strAppend(entryBuf, "/", 1);
 	strAppend(entryBuf, dirEntry->d_name, strlen(dirEntry->d_name));
 
@@ -184,7 +184,7 @@ void genEntry(struct dirent* dirEntry, string* path, string* entryBuf, char* por
 }
 
 /* ret 0 on success, 1 on error*/
-int getFileOrDir (char* path, string* buffer, gopherConn* conn) {
+int getFileOrDir (char* path, char* request, string* buffer, gopherConn* conn) {
 	int fd = open(path, O_RDONLY, 0);
 
 	if (fd < 0) {
@@ -225,7 +225,7 @@ int getFileOrDir (char* path, string* buffer, gopherConn* conn) {
 		}
 		while ((dirEntry = readdir(dir)) != NULL) {
 			if (dirEntry->d_name[0] != '.') {
-				genEntry(dirEntry, sPath, buffer, conn->port, conn->hostname);
+				genEntry(dirEntry, request, sPath, buffer, conn->port, conn->hostname);
 			}
 		}
 
@@ -262,6 +262,7 @@ int getFileOrDir (char* path, string* buffer, gopherConn* conn) {
 */
 void getDirListing (char* request, size_t requestLen, string* str, gopherConn* conn) {
 	
+	string* fullPath = strAlloc(256);
 	char prevchar = '\0';
 	// prevents access of hidden files, or of files outside server root
 	for (int i = 0; i < requestLen && request[i] != '\0'; i++) {
@@ -270,12 +271,11 @@ void getDirListing (char* request, size_t requestLen, string* str, gopherConn* c
 		}
 		prevchar = request[i];
 	}
-	string* fullPath = strAlloc(256);
 	strAppend(fullPath, conn->serverRoot, strlen(conn->serverRoot));
 	strAppend(fullPath, request, requestLen);
 	strAppend(fullPath, "\0", 1);
 
-	if (getFileOrDir(fullPath->content, str, conn)) {
+	if (getFileOrDir(fullPath->content, request, str, conn)) {
 DIR_ERROR:
 		strTruncate(fullPath, 0);
 		strAppend(fullPath, conn->serverRoot, strlen(conn->serverRoot));
@@ -283,7 +283,7 @@ DIR_ERROR:
 		strAppend(fullPath, "\0", 1);
 
 		strTruncate(str, 0);
-		if (getFileOrDir(fullPath->content, str, conn)) {
+		if (getFileOrDir(fullPath->content, request, str, conn)) {
 			strTruncate(str, 0);
 			strAppend(str, ERROR_ERROR_MSG, strlen(ERROR_ERROR_MSG));
 		}

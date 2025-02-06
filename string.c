@@ -1,8 +1,10 @@
 #include "string.h"
 #include <stdlib.h>
 #include <string.h>
+
+// + 1 is for nul char
 string* strAlloc(size_t len) {
-	string* s = malloc(sizeof(string) + len); 
+	string* s = malloc(sizeof(string) + len + 1); 
 	s->size = len;
 	s->len = 0;
 	return s;
@@ -19,6 +21,7 @@ size_t strAppend(string* str, char* content, size_t len) {
 	}
 	memcpy(str->content + str->len, content, len);
 	str->len += len;
+	str->content[str->len] = '\0';
 	return len;
 }
 
@@ -31,6 +34,7 @@ int strTruncate(string* str, size_t len) {
 	}
 	if (len < str->len) {
 		str->len = len;
+		str->content[str->len] = '\0';
 	}
 	return 0;
 }
