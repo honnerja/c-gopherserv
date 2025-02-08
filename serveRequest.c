@@ -31,7 +31,6 @@ int file2String (int fd, string* str) {
 	const int bufSize = 512;
 	const char* infoLineCruft = "		null.host	1";
 	size_t strOrigLen = str->len;
-	// alloc during conn, avoid these, this could probably be avoided by using str as buffer
 	char* buf = malloc(bufSize);
 	int justBeenNewLine = 1;
 	int rawLine = 0;
@@ -76,7 +75,6 @@ int file2String (int fd, string* str) {
 }
 
 void header2str(int fd, string* str, char* type, string* title) {
-	/* reading 1 char at a time is maybe a bad solution but will work for now*/
 	char curChar;
 	int code = read(fd, &curChar, 1);
 	*type = curChar;
@@ -249,6 +247,10 @@ int getFileOrDir (char* path, char* request, string* buffer, gopherConn* conn) {
 		conn->str->len = 0;
 		conn->contentState = CONTENT_FILE;
 		conn->fd = fd;
+
+		conn->fileReader.buf = conn->str;
+		initReader(&conn->fileReader, path, request); 
+
 	}
 
 	free(sbuf);
@@ -337,7 +339,7 @@ void sendResource (int epollfd, gopherConn* conn) {
 		}
 		return;
 	}
-	if ((conn->contentState == CONTENT_STR && (conn -> responseSent >= conn -> str -> len)) || (conn->contentState == CONTENT_FILE && conn->responseSent >= conn->fileLen)) {
+	if ((conn->contentState == CONTENT_STR && (conn -> responseSent >= conn -> str -> len)) || (conn->contentState == CONTENT_FILE && isDone(&conn->fileReader))) { 
 		conn -> state = SEND_END_STRING;
 		return;
 	}
@@ -354,32 +356,16 @@ void sendResource (int epollfd, gopherConn* conn) {
 			return;
 		}
 	} else {
-			if (conn->responseSent >= conn->fileLen) {
-				conn->state = SEND_END_STRING;
-				return;
-			}
-			if (conn->str->len == 0) {
-				int readCode = read(conn->fd, conn->str->content, conn->str->size);
-				if (readCode < 0) {
-					conn->state = ERROR;
-					return;
-				}
-				conn->str->len = readCode;
-				conn->bufferSent = 0;
-			}
-			long sent = send(conn -> sock, conn->str->content + conn->bufferSent, conn -> str -> len - conn->bufferSent, MSG_DONTWAIT);
-			if (sent < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
-				conn -> state = ERROR;
-				return;
-			}
-			if (sent < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
-				return;
-			}
-			conn->responseSent += sent;
-			conn->bufferSent += sent;
-			if (conn->bufferSent >= conn->str->len) {
-				strTruncate(conn->str, 0);
-			}
-
+		refillBuf(&conn->fileReader);
+		if (isDone(&conn->fileReader)) {
+			conn->state = SEND_END_STRING;
+			return;
+		}
+		long sent = send(conn -> sock, conn->fileReader.buf->content + conn->fileReader.bufPos, conn->fileReader.buf->len - conn->fileReader.bufPos, MSG_DONTWAIT);
+		if (sent < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
+			conn -> state = ERROR;
+			return;
+		}
+		conn->fileReader.bufPos += sent;
 	}
 }

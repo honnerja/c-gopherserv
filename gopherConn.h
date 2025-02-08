@@ -1,4 +1,5 @@
 #pragma once
+#include "reader.h"
 #include <stddef.h>
 #include <time.h>
 struct linkedList;
@@ -22,8 +23,6 @@ enum contentStates {
 
 
 /* the request buf is where the client request is read into
- * f is opened after request is read, it represents the file that is requested
- * f is null before open
  */
 typedef struct gopherConn {
 	enum connStates state;
@@ -46,7 +45,8 @@ typedef struct gopherConn {
 	struct timespec lastInteract;
 	char* serverRoot;
 	char* hostname;
-	char* port
+	char* port;
+	reader fileReader;
 } gopherConn;
 
 /*

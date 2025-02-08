@@ -1,38 +1,16 @@
-#include "string.h"
-#include <dirent.h>
+#include "reader.h"
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <stdio.h>
 
-/* responsible for reading files / directories */
 
-enum readerState {
-	READER_DIR_HEAD,
-	READER_HEAD,
-	READER_ENTRY,
-	READER_TAIL,
-	READER_DIR_TAIL,
-	READER_FILE,
-	READER_DONE
-};
-
-typedef struct reader {
-	enum readerState state;
-	DIR* dir;
-	struct dirent* dirEnt;
-	int fd;
-	string* buf;
-	size_t bufPos;
-	char* path;
-	/* the following are needed to generate dir entries*/
-	char* request
-} reader;
-
+/* Update this to incorporate the end string*/
 void refillBuf(reader* r) {
 	switch (r->state) {
 		case READER_DIR_HEAD:
+			
 		while ((r->dirEnt = readdir(r->dir)) != NULL) {
 			case READER_HEAD:
 			case READER_ENTRY:
@@ -49,11 +27,13 @@ void refillBuf(reader* r) {
 			if (r->bufPos == r->buf->len && r->buf->len < r->buf->size) {
 				r->state = READER_DONE;
 			}
+			r->bufPos = 0;
 			int readCode = read(r->fd, r->buf->content, r->buf->size);
 			r->buf->len = readCode;
 			if (readCode < 0) {
 				r->state = READER_DONE;
 			}
+			break;
 			
 		case READER_DONE:
 			break;

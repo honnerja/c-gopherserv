@@ -87,8 +87,6 @@ pthread_mutex_t rstackMut = PTHREAD_MUTEX_INITIALIZER;
 /* connCount is used to count number of connections, decremented when connection completes
  * this function will wait on epollfd and perform the appropriate response */
 void serveConns(int epollfd, struct epoll_event* events, size_t eventslen, int* connCount, linkedList* ll2, resourceStack* rstack) {
-	/* 500 is the timeout in ms, needs to exist so server can still accept connection in a single-threaded manner*/
-	/* the timeout of 1 is a terrible hack to negate the need for multithreading*/
 	int numConns = epoll_wait(epollfd, events, eventslen, EPOLL_TIMEOUT_MS);	
 	for (int i = 0; i < numConns; i++) {
 		determineAction(epollfd, (gopherConn* )events[i].data.ptr);
@@ -168,7 +166,6 @@ void* connHandleMain(void* argvoid) {
 struct epoll_event events[MAX_EVENTS];
 
 
-/* TODO change accept socket to nonblocking io, continue work*/
 int main(int argc, char** argv) {
 	int epollfd = epoll_create1(0);
 	if (argc != 2) {
@@ -248,7 +245,7 @@ BIND_SUCCEED:
 		if (pollRet < 1) {
 			continue;
 		}
-		// accept connection and spin off thread to handle if threads < max allowable
+		// accept connection and add to epollfd if conns < maxconns
 		if (connected < MAX_CONNS && ((acceptSock = accept(sock, NULL, NULL)) != -1)) {
 			pthread_mutex_lock(&rstackMut);
 			gopherConn* conn = rstackPop(args.rstack); 
